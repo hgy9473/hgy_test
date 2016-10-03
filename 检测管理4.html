@@ -1,0 +1,170 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>选中某个道桥，展示检测周期，检测次数，检测变化趋势，历年打分，评定等级，检测类型，检测结果</title>
+    <style>
+
+    </style>
+
+</head>
+<body onload="init()">
+    <div id="map" style="width:95%;height:580px;"></div>
+</body>
+<!--引用需要的脚本-->
+<script src="./libs/SuperMap.Include.js"></script>
+
+<script type="text/javascript">
+
+//------------------------------初始化---------------加载底图----加载管理的道桥-----------
+    //声明变量map、layer、url
+    var map, layer,vectorLayer,infowin = null,
+            url = "http://localhost:8090/iserver/services/map-chengdu/rest/maps/hgy_test";
+    //创建地图控件
+    function init() {
+        //控件集合
+        var options = {controls:[
+            new SuperMap.Control.ScaleLine({isImperialUnits:false,geodesic:false}),
+            new SuperMap.Control.LayerSwitcher(),
+            new SuperMap.Control.PanZoomBar(),//提供平移、缩放按钮
+            new SuperMap.Control.Navigation({//导航控件，不可见，可使得鼠标拖动，滚动，双击有用
+                dragPanOptions:{
+                    enableKinetic:true
+                }
+            }),
+            new SuperMap.Control.OverviewMap()
+        ]};
+        map = new SuperMap.Map("map",options);
+
+        layer = new SuperMap.Layer.TiledDynamicRESTLayer("Chengdu",
+                url,
+                null, {maxResolution:"auto"});
+        vectorLayer = new SuperMap.Layer.Vector("Vector Layer");//该图层用于渲染矢量要素
+
+        markerLayer = new SuperMap.Layer.Markers("Markers");
+
+        layer.events.on({"layerInitialized": addLayer});
+
+    }
+
+    function addLayer() {
+        map.addLayers([layer, vectorLayer,markerLayer]);
+        map.setCenter(new SuperMap.LonLat(104.0613,30.6651), 4.00006);//设置中心点，缩放级别
+
+        queryBySQL();
+    }
+
+    function queryBySQL() {
+        vectorLayer.removeAllFeatures();
+
+        var queryParam, queryParam1,queryBySQLParams, queryBySQLService;
+
+        queryParam = new SuperMap.REST.FilterParameter({// 该类用于设置查询数据集的查询过滤参数
+            name:"t_bridge@ryd",
+            attributeFilter: "SmId>=-1"//属性过滤条件
+        });
+
+        queryParam1 = new SuperMap.REST.FilterParameter({// 该类用于设置查询数据集的查询过滤参数
+            name: "t_road@ryd",//查询数据集名称或者图层名称。
+            attributeFilter: "SmId>=-1"//属性过滤条件
+        });
+
+        queryBySQLParams = new SuperMap.REST.QueryBySQLParameters({//该类用于设置 SQL 查询的相关参数
+            queryParams: [queryParam,queryParam1]//查询过滤条件参数数组
+        });
+
+        queryBySQLService = new SuperMap.REST.QueryBySQLService(url, {
+            //SQL 查询服务类。 在一个或多个指定的图层上查询符合 SQL 条件的空间地物信息
+            eventListeners: {
+                "processCompleted": processCompleted,
+                "processFailed": processFailed
+            }
+        });
+        queryBySQLService.processAsync(queryBySQLParams);
+    }
+
+    function processCompleted(queryEventArgs) {
+       
+        var i, j, result = queryEventArgs.result;
+
+
+        if (result && result.recordsets) {
+            for (i=0, recordsets=result.recordsets, len=recordsets.length; i<len; i++) {
+                if (recordsets[i].features) {
+                    for (j=0; j<recordsets[i].features.length; j++) {
+                        var feature = recordsets[i].features[j];
+                        var point = feature.geometry;
+                        if(point.CLASS_NAME == SuperMap.Geometry.Point.prototype.CLASS_NAME){
+
+                            var size = new SuperMap.Size(44, 33),
+                                    offset = new SuperMap.Pixel(-(size.w/2), -size.h),
+                                    icon = new SuperMap.Icon("./theme/images/marker.png", size, offset);
+
+                            var marker = new SuperMap.Marker(new SuperMap.LonLat(point.x, point.y), icon);
+                            marker.SmId = feature.attributes.SmID;
+
+                            marker.events.on({
+                                "click":openInfoWin,
+                                "scope": marker
+                            });
+
+                            markerLayer.addMarker(marker);
+                        }
+                        else
+                        {
+                            feature.style = {
+                                strokeColor: "#A49F94",
+                                strokeWidth: 2,
+                                fillColor:"#A49F94"
+                            };
+                            vectorLayer.addFeatures(feature);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    function processFailed(e) {
+        alert(e.error.errorMsg);
+    }
+
+    function openInfoWin(){
+
+
+        closeInfoWin();
+        var marker = this;
+
+        var lonlat = marker.getLonLat();
+
+        var contentHTML = "<div style='font-size:.8em; opacity: 0.8; overflow-y:hidden;'>";
+        contentHTML += "<div>"+"SmId = "+this.SmId+"</div></div>";
+
+        var popup = new SuperMap.Popup.FramedCloud("popwin",
+                //具有指向和边框的浮动弹窗。
+                new SuperMap.LonLat(lonlat.lon,lonlat.lat),
+                null,
+                contentHTML);
+
+        infowin = popup;
+        map.addPopup(popup);
+    }
+
+    function closeInfoWin(){
+        if(infowin){
+            try{
+                infowin.hide();
+                infowin.destroy();
+            }
+            catch(e){}
+        }
+    }
+
+    //--------根据ID查询需要的数据----------
+    //查检测次数、检测周期
+    //查询历年检测结果、打分、评定等级、检测类型
+
+
+
+</script>
+</html>

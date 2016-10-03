@@ -1,0 +1,469 @@
+
+<!DOCTYPE>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>图例专题图</title>
+    <style type="text/css">
+        body{
+            margin: 0;
+            overflow: hidden;
+            background: #fff;
+        }
+        #map{
+            position: relative;
+            height: 510px;
+            border:1px solid #3473b7;
+        }
+        #toolbar {
+            position: relative;
+            padding-top: 5px;
+            padding-bottom: 10px;
+        }
+
+        /*图例 style*/
+        .legend {
+            position: absolute;
+            right: 10px;
+            top: 300px;
+            width: 250px;
+            text-align: center;
+            border: 2px solid #D6E3F1;
+            background: #FFF;
+            z-index: 1000;
+            display: none;
+        }
+        .legendTitle{
+            background: #1E90FF;
+        }
+        .legendContent{
+            padding-left: 15px;
+            padding-right: 15px;
+            height: 300px;
+            display: block;
+            overflow-y: auto;
+        }
+        .legendItemHeader{
+            top: 5px;
+            width: 100px;
+            height: 18px;
+            text-align: center;
+        }
+        .legendItemValue{
+            top: 5px;
+            width: 120px;
+            text-align: center;
+            height: 18px;
+        }
+
+        /*信息框 style*/
+        #infoPlane{
+            border: 2px solid #D6E3F1;
+            position: absolute;
+            right: 10px;
+            top: 200px;
+            width: 250px;
+            z-index: 999;
+            display: none;
+        }
+
+    </style>
+    <script src='./libs/SuperMap.Include.js'></script>
+
+    <script type="text/javascript">
+    //---
+        var host = document.location.toString().match(/file:\/\//)?"http://localhost:8090":'http://' + document.location.host,
+            url=host + "/iserver/services/map-chengdu/rest/maps/hgy_test";
+            url2 = host + "/iserver/services/data-chengdu/rest/data";
+
+        var map, layer, themeLayer,markerLayer,infowin,t_vec;
+//--------------------------------------------------------------------------------------------------------------
+        function init(){
+            // 检测是否支持Canvas
+            if(!document.createElement('canvas').getContext){
+                alert("您的浏览器不支持Canvas，请升级！");
+                return;
+            }
+
+            map = new SuperMap.Map("map",{controls: [
+                new SuperMap.Control.LayerSwitcher(),
+                new SuperMap.Control.ScaleLine(),
+                new SuperMap.Control.PanZoomBar(),
+                new SuperMap.Control.Navigation({
+                    dragPanOptions: {
+                        enableKinetic: true
+                    }
+                })]
+            });
+            layer = new SuperMap.Layer.TiledDynamicRESTLayer("Chengdu",
+                url,
+                null,
+                {transparent: true, cacheEnabled: true},
+                 {maxResolution:"auto"}
+                 );
+            t_vec = new SuperMap.Layer.Vector("t Vector Layer");//该图层用于渲染矢量要素
+            markerLayer = new SuperMap.Layer.Markers("Markers");
+            layer.events.on({"layerInitialized":addLayer});
+            // 定义 Unique 单值专题图层
+            themeLayer = new SuperMap.Layer.Unique("ThemeLayer");
+
+            themeLayer.setOpacity(1);
+
+            // 图层基础样式
+            // themeLayer.style = {
+            //     // shadowBlur: 5,//阴影
+            //     // shadowColor: "#000",
+            //     // shadowOffsetX: 1,
+            //     // shadowOffsetY: 1,
+            //     // fillColor: "red"//填充色
+            // };
+
+            // 开启 hover 高亮效果
+            themeLayer.isHoverAble = true;
+
+            // hover 高亮样式
+            themeLayer.highlightStyle = {
+                stroke: true,
+                strokeWidth: 10,
+                strokeColor: '#000',
+                fillColor: "#000",
+                fillOpacity: 0.9
+            };
+
+            // 用于单值专题图的属性字段名称-------------------------------------------------------
+            themeLayer.themeField = "hgy";
+            
+            themeLayer.styleGroups=[// 样式数组，设定值对应的样式
+                {
+                    value:0,
+                    style:{
+                        fillColor:"red",
+                        // stroke: true,
+                         strokeWidth: 3,
+                         strokeColor: '#12E912'
+                    }
+                },
+                {
+                    value:1,
+                    style:{
+                        fillColor:"red",
+                        // stroke: true,
+                         strokeWidth: 3,
+                         strokeColor: '#F525E2'
+                    }
+                },
+                {
+                    value:2,
+                    style:{
+                        fillColor:"#red",
+                        // stroke: true,
+                        strokeWidth: 3,
+                        strokeColor: 'blue'
+                    }
+                },
+                {
+                    value:3,
+                    style:{
+                        fillColor:"red",
+                        // stroke: true,
+                        strokeWidth: 3,
+                        strokeColor: 'yellow'
+                    }
+                },
+                {
+                    value:4,
+                    style:{
+                        fillColor:"red",
+                        strokeWidth: 3,
+                        strokeColor: '#7A7272'
+                    }
+                }
+            ];
+
+            //专题图层 mousemove 事件
+            themeLayer.on("mousemove", evn);
+            themeLayer.on('click',func);
+
+        }
+//--------------------------------------------------------------------------------------------------------------
+        function addLayer() {
+            
+            map.addLayers([layer, t_vec,themeLayer,markerLayer]);
+            map.setCenter(new SuperMap.LonLat(104.0613,30.6651), 4.00006);
+
+        }
+
+
+        //////////0------
+        function func(e) {
+            if(e.target && e.target.refDataID){
+                var fid = e.target.refDataID;
+                var fea = themeLayer.getFeatureById(fid);
+                fea.style = {
+                    fillColor:"#251A1A",
+                    strokeWidth: 8,
+                    strokeColor: '#040A04'
+                }
+                console.log(fea.attributes.NAME);
+                t_vec.removeAllFeatures();
+                t_vec.addFeatures(fea);
+                // map.addLayer(t_vec);
+            }
+        }
+
+//--------------------------------------------------------------------------------------------------------------
+        //获取 feature 数据
+        function addThemeLayer() {
+            clearLayer();
+            alert(1);
+
+            var getFeatureParam, getFeatureBySQLService, getFeatureBySQLParams;
+
+            getFeatureParam = new SuperMap.REST.FilterParameter({
+                name: "ryd",//被查询的数据集或者图层
+                attributeFilter: "SMID > -1"//查询条件
+            });
+            getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
+                queryParameter: getFeatureParam,//查询过滤条件参数
+                toIndex: 5000,//查询结果的最大索引号
+                datasetNames:["ryd:t_road"]//数据集集合中的数据集名称列表
+            });
+            getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(url2, {
+                eventListeners: {
+                    "processCompleted": processCompleted, 
+                    "processFailed": processFailed}}
+                );
+
+            getFeatureBySQLService.processAsync(getFeatureBySQLParams);
+
+            // //-----------------------查询桥梁-----------------------------
+            var queryParam1,queryBySQLParams, queryBySQLService;
+
+            queryParam1 = new SuperMap.REST.FilterParameter({// 该类用于设置查询数据集的查询过滤参数
+                name: "t_bridge@ryd",//查询数据集名称或者图层名称。
+                attributeFilter: "SmId>=0 and SmId<=1000"//属性过滤条件
+            });
+
+            queryBySQLParams = new SuperMap.REST.QueryBySQLParameters({//该类用于设置 SQL 查询的相关参数
+                queryParams: [queryParam1]//查询过滤条件参数数组
+            });
+
+            queryBySQLService = new SuperMap.REST.QueryBySQLService(url, {
+                //SQL 查询服务类。 在一个或多个指定的图层上查询符合 SQL 条件的空间地物信息
+                eventListeners: {
+                    "processCompleted": processCompleted_bridge,
+                    "processFailed": processFailed_bridge
+                }
+            });
+            queryBySQLService.processAsync(queryBySQLParams);
+        }
+
+//--------------------------------------------------------------------------------------------------------------
+        function processCompleted(getFeaturesEventArgs) {
+
+            var result = getFeaturesEventArgs.result;
+            
+            var feas = [];
+
+            if (result && result.features) {
+                var features =  result.features
+
+                for(var i = 0, len = features.length; i < len; i++){
+
+                    var feature = features[i];
+                    feature.attributes.hgy = i%5;
+
+                    feas.push(feature);
+                }
+
+                themeLayer.addFeatures(feas);
+            }
+
+            document.getElementById("mapLegend").style.display = "block";
+        }
+//--------------------------------------------------------------------------------------------------------------
+        function processFailed(e) {
+            alert(e.error.errorMsg);
+        }
+
+
+        function processCompleted_bridge(getFeaturesEventArgs) {
+            var i,j,result = getFeaturesEventArgs.result;
+                    if (result && result.recordsets) {
+
+                        for (i=0, recordsets=result.recordsets, len=recordsets.length; i<len; i++) {
+                            
+                            if (recordsets[i].features) {
+                                for (j=0; j<recordsets[i].features.length; j++) {
+
+                                    var feature = recordsets[i].features[j];
+                                    var point = feature.geometry;
+
+                                    if(point.CLASS_NAME == SuperMap.Geometry.Point.prototype.CLASS_NAME){
+
+                                        var size = new SuperMap.Size(44, 33),
+                                            offset = new SuperMap.Pixel(-(size.w/2), -size.h),
+                                            hgy_key = j%3,icon;//----
+
+                                        feature.attributes.hgy_key = hgy_key;//----
+
+                                        if(hgy_key === 0){
+                                             icon = new SuperMap.Icon("./images/marker_black.png", size, offset)
+                                        }else if(hgy_key === 1){
+                                            icon = new SuperMap.Icon("./images/marker_blue.png", size, offset)
+                                        }else{
+                                            icon = new SuperMap.Icon("./images/marker_red.png", size, offset)
+                                        }
+                                        var marker = new SuperMap.Marker(new SuperMap.LonLat(point.x, point.y), icon); 
+
+                                        marker.tip_info = "名称："+feature.attributes.NAME+
+                                        "<span title='关闭信息窗口' style='margin:0px;margin-left:10px;"+
+                                        "color:red;border-radius:5px;border:1px solid blue;cursor:pointer;"+
+                                        "font-size:1.2em' onclick='closeInfoWin()'>&nbspX&nbsp</span><br>地址："+
+                                        feature.attributes.ADDRESS+"<br>hgy_key:"+feature.attributes.hgy_key;
+
+                                        marker.events.on({
+                                            "click":openInfoWin,
+                                            "scope": marker
+                                        });
+
+                                        markerLayer.addMarker(marker);
+                                        
+                                    }
+                                }
+                            }
+                         }
+            }
+        }
+    //--------------------------------------------------------------------------------------------------------
+            function processFailed_bridge(e) {
+                alert(e.error.errorMsg);
+            }
+
+            function clearLayer() {
+                document.getElementById("mapLegend").style.display = "none";
+                document.getElementById("infoPlane").style.display = "none";
+
+                //先清除上次的显示结果
+                themeLayer.clear();
+                markerLayer.clearMarkers();
+            }
+    //-------------------------------------------------------------------------------------------------
+
+        function openInfoWin(){
+            
+            closeInfoWin();
+            var marker = this;
+
+            var lonlat = marker.getLonLat();
+
+            var contentHTML = "<div style='font-size:.8em; opacity: 0.8; overflow-y:hidden;'>";
+            contentHTML += "<div>"+marker.tip_info+"</div></div>";
+
+            var popup = new SuperMap.Popup.FramedCloud("popwin",
+                    //具有指向和边框的浮动弹窗。
+                    new SuperMap.LonLat(lonlat.lon,lonlat.lat),
+                    null,
+                    contentHTML);
+
+            infowin = popup;
+            map.addPopup(popup);
+           
+        }
+
+        function closeInfoWin(){
+            if(infowin){
+                try{
+                    infowin.hide();
+                    infowin.destroy();
+                }
+                catch(e){}
+            }
+        }
+
+        function evn(e){
+
+            if(e.target && e.target.refDataID){
+                document.getElementById("infoPlane").style.display = "block";
+                var fid = e.target.refDataID;
+                var fea = themeLayer.getFeatureById(fid);
+                
+                if(fea){
+                    document.getElementById("infoContent").innerHTML = "";
+                    document.getElementById("infoContent").innerHTML += "ID: " + fea.attributes.SMID + "<br/>";
+                    document.getElementById("infoContent").innerHTML += "长度: " + fea.attributes.LENGTH + "<br/>";
+                    document.getElementById("infoContent").innerHTML += "名称: " + fea.attributes.NAME + "<br/>";
+                    document.getElementById("infoContent").innerHTML +="cus_hgy:"+fea.attributes.hgy+"<br>";
+                }
+            }
+            else{
+                document.getElementById("infoContent").innerHTML = "";
+                document.getElementById("infoPlane").style.display = "none";
+            }
+        }
+//-------------------------------------------------------------------------------------
+    </script>
+</head>
+<body onload="init()">
+    <div id="toolbar">
+        <input type="button" class="btn" value="添加专题图层" onclick="addThemeLayer()" />
+        <input type="button" class="btn" value="清除" onclick="clearLayer()" />
+    </div>
+    <div>
+        <div id="map"></div>
+        <div id="mapLegend" class="legend">
+            <div class="legendTitle">
+                <span>图例</span>
+            </div>
+            <div class="legendContent">
+                <table>
+                    <tr>
+                        <td class="legendItemHeader">cus_hgy</td>
+                        <td class="legendItemValue">颜色</td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">0</td>
+                        <td class="legendItemValue" style="background:#12E912"></td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">1</td>
+                        <td class="legendItemValue" style="background:#F525E2"></td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">2</td>
+                        <td class="legendItemValue" style="background:blue"></td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">3</td>
+                        <td class="legendItemValue" style="background:yellow"></td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">4</td>
+                        <td class="legendItemValue" style="background:#7A7272"></td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">hgy_key</td>
+                        <td class="legendItemValue">符号</td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">0</td>
+                        <td class="legendItemValue"><img src="./images/marker_black.png" /></td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">1</td>
+                        <td class="legendItemValue"><img src="./images/marker_blue.png" /></td>
+                    </tr>
+                    <tr>
+                        <td class="legendItemHeader">2</td>
+                        <td class="legendItemValue"><img src="./images/marker_red.png" /></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div id="infoPlane">
+            <div style="text-align: center;background: #1E90FF">属性表</div>
+            <div id="infoContent" style="overflow-y: auto; padding: 5px; background-color: #FFFFFF"></div>
+        </div>
+    </div>
+</body>
+</html>
