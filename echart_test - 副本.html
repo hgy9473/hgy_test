@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<head>
+<meta charset="utf-8">
+<title>ECharts</title>
+<style type="text/css">
+    *{
+        margin:0;
+        padding: 0;
+    }
+    html,body{
+        height:100%;
+        width:100%;
+    }
+
+
+    #main{
+        height:400px;
+        width:600px;
+        border:1px solid #333333;
+        box-shadow:-3px 3px gray;
+        border-radius:10px;
+        position: fixed;
+        top:10px;
+        left:400px;
+    }
+    button{
+        background:black;
+        color:white;
+        font-size: 1.5em;
+        position: fixed;
+        top:500px;
+        left:500px;
+    }
+    button:hover{
+        background: blue;
+    }
+</style>
+</head>
+<body>
+<!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+<div id="main"></div>
+<br><br>
+<button onclick="ch_theme()">修改主题</button>
+
+</body>
+<!-- ECharts单文件引入 -->
+ <!-- <script src="./js/echarts.min.js"></script> -->
+<script src="./js/echarts.js"></script>
+<script src="./theme/echarts/shine.js"></script>
+<script src="./theme/echarts/infographic.js"></script>
+<script src="./theme/echarts/vintage.js"></script>
+<script src="./theme/echarts/dark.js"></script>
+<script src="./theme/echarts/roma.js"></script>
+<script src="./theme/echarts/macarons.js"></script>
+
+<script type="text/javascript">
+        // 基于准备好的dom，初始化echarts图表
+        var myChart = echarts.init(document.getElementById('main')); 
+
+        var option = {
+            title:{
+                show:true,
+                text:"HGY_TEST 嵌套饼图",
+                x:"center"
+            },
+
+            tooltip : {//提示框
+                trigger: 'item',//提示框的触发类型
+                formatter: "{a} <br/>{b} : {c} ({d}%)"//提示框的数据格式
+            },
+
+            legend: {//图例
+                orient : 'vertical',//图例布局方式
+                x : 'left',//图例的水平位置
+                data:['直达','营销广告','搜索引擎','邮件营销','联盟广告','视频广告','百度','谷歌','必应','其他']//图例的内容
+            },
+
+            toolbox: {//工具箱
+                show : true,//可见性
+                feature : {//工具
+                    mark : {show: true},//辅助线
+                    dataView : {show: true, readOnly: false},//数据视图，可编辑
+                    magicType : {//动态类型切换
+                        show: true, 
+                        type: ['pie', 'funnel']
+                    },
+                    restore : {show: true},//恢复
+                    saveAsImage : {show: true,type:'jpeg'}//另存为图片
+                }
+            },
+
+            calculable : false,//禁用拖拽重计算
+
+            series : [//驱动图表生成的数据内容数组
+                {//系列1
+                    name:'访问来源（宏观）',//系列名称
+                    type:'pie',//图表类型
+                    selectedMode: 'single',//选中模式
+                    radius : [0, 70],//半径，[内半径,外半径]
+                    
+                    // 用于漏斗图
+                    x: '20%',//左上角横坐标
+                    width: '40%',//宽度
+                    funnelAlign: 'right',//水平方向对齐方式
+                    max: 1548,//最大值
+                    
+                    itemStyle : {//图形样式
+                        normal : {//默认样式
+                            label : {//标签
+                                position : 'inner'//标签显示的位置
+                            },
+                            labelLine : {//标签视觉引导线
+                                show : false
+                            }
+                        }
+                    },
+
+                    data:[//数据
+                        {value:335, name:'直达'},
+                        {value:679, name:'营销广告'},
+                        {value:1548, name:'搜索引擎', selected:true}
+                    ]
+                },
+
+                {//系列2
+                    name:'访问来源（微观）',
+                    type:'pie',
+                    radius : [100, 140],
+                    
+                    // 用于漏斗图
+                    x: '60%',
+                    width: '35%',
+                    funnelAlign: 'left',
+                    max: 1048,
+                    
+                    data:[
+                        {value:335, name:'直达'},
+                        {value:310, name:'邮件营销'},
+                        {value:234, name:'联盟广告'},
+                        {value:135, name:'视频广告'},
+                        {value:1048, name:'百度'},
+                        {value:251, name:'谷歌'},
+                        {value:147, name:'必应'},
+                        {value:102, name:'其他'}
+                    ]
+                }
+            ]
+    };
+    // 为echarts对象加载数据 
+    myChart.setOption(option); 
+
+    function ch_theme(){
+        myChart = echarts.init(document.getElementById('main'),'dark');
+        myChart.setOption(option); 
+    }
+
+    </script>
+</html>
